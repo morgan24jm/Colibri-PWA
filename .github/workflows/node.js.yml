@@ -1,37 +1,46 @@
 name: Node.js CI
 
-
-
 on:
- push:
-   branches: [ "main" ]
- pull_request:
-   branches: [ "main" ]
-
-
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
 jobs:
- test:
-   runs-on: ubuntu-latest
-   strategy:
-         matrix:
-           node-version: [22.20.0,18.x]
-   steps:
-     - name: Checkout repository
-       uses: actions/checkout@v4
-     - name: Use Node.js ${{ matrix.node-version }}
-       uses: actions/setup-node@v4
-       with:
-         node-version: ${{ matrix.node-version }}
-         cache: 'npm'
+  test:
+    runs-on: ubuntu-latest
 
+    strategy:
+      matrix:
+        node-version: [18.x, 22.x]
 
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-     - name: Install dependencies
-       run: npm install
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
 
+      # =========================
+      #  BACKEND
+      # =========================
+      - name: Install backend dependencies
+        working-directory: Backend
+        run: npm ci
 
+      - name: Run backend tests
+        working-directory: Backend
+        run: npm test
 
-     - name: Run Jest tests
-       run: npm test
+      # =========================
+      #  FRONTEND
+      # =========================
+      - name: Install frontend dependencies
+        working-directory: Frontend
+        run: npm ci
 
+      - name: Build frontend
+        working-directory: Frontend
+        run: npm run build
