@@ -50,15 +50,18 @@ jobs:
       - name: Checkout código
         uses: actions/checkout@v4
 
-      - name: Instalar K6 (action oficial)
+      - name: Instalar K6
         uses: grafana/setup-k6-action@v1
 
       - name: Ejecutar pruebas de carga K6
-        run: k6 run Backend/test/load-test.js
+        env:
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
+        run: k6 run --out cloud Backend/test/load-test.js
 
       - name: Subir resultados como artefacto
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: k6-results
-          path: Backend/tests/load-test.js
+          path: Backend/test/load-test.js
