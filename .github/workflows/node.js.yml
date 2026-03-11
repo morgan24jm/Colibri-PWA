@@ -7,11 +7,13 @@ on:
     branches: ["main"]
 
 jobs:
+
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         node-version: [18.x, 22.x]
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,14 +24,14 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       # =========================
-      #  BACKEND
+      # BACKEND
       # =========================
       - name: Install backend dependencies
         working-directory: Backend
         run: npm install
 
       # =========================
-      #  FRONTEND
+      # FRONTEND
       # =========================
       - name: Install frontend dependencies
         working-directory: Frontend
@@ -40,7 +42,29 @@ jobs:
         run: npm run build
 
   # =========================
-  #  K6 LOAD TESTS
+  # SONARQUBE ANALYSIS
+  # =========================
+  sonarqube:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v2
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.projectKey=mi-proyecto-gestion-sw
+            -Dsonar.sources=Backend,Frontend
+
+  # =========================
+  # K6 LOAD TESTS
   # =========================
   k6-load-test:
     runs-on: ubuntu-latest
