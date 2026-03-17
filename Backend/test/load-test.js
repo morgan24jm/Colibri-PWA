@@ -1,9 +1,9 @@
 import http from "k6/http";
 import { check, sleep, group } from "k6";
-import { Trend, Rate } from "k6/metrics";
+import { Trend } from "k6/metrics";
 
 const duracionRespuesta = new Trend("duracion_respuesta");
-const tasaExito = new Rate("tasa_exito");
+
 
 export const options = {
   stages: [
@@ -13,7 +13,7 @@ export const options = {
   ],
   thresholds: {
     http_req_duration: ["p(95)<1000"],
-    tasa_exito: ["rate>0.95"],
+    checks: ["rate>0.95"],
   },
 };
 
@@ -49,7 +49,6 @@ function loginUser() {
   const ok = check(res, {
     "POST /user/login 200": (r) => r.status === 200,
   });
-  tasaExito.add(ok);
   duracionRespuesta.add(res.timings.duration);
 
   if (!ok) return null;
@@ -76,7 +75,7 @@ function loginRider() {
   const ok = check(res, {
     "POST /rider/login 200": (r) => r.status === 200,
   });
-  tasaExito.add(ok);
+
   duracionRespuesta.add(res.timings.duration);
 
   if (!ok) return null;
@@ -100,14 +99,14 @@ export default function (data) {
     const okRoot = check(resRoot, {
       "GET / 200": (r) => r.status === 200,
     });
-    tasaExito.add(okRoot);
+   
     duracionRespuesta.add(resRoot.timings.duration);
 
     const resReload = http.get(`${BASE_URL}/reload`);
     const okReload = check(resReload, {
       "GET /reload 200": (r) => r.status === 200,
     });
-    tasaExito.add(okReload);
+  
     duracionRespuesta.add(resReload.timings.duration);
   });
 
@@ -119,7 +118,7 @@ export default function (data) {
       const okCoords = check(resCoords, {
         "GET /map/get-coordinates 200": (r) => r.status === 200,
       });
-      tasaExito.add(okCoords);
+    
       duracionRespuesta.add(resCoords.timings.duration);
     });
   }
@@ -137,7 +136,7 @@ export default function (data) {
       const okProfile = check(resProfile, {
         "GET /user/profile 200": (r) => r.status === 200,
       });
-      tasaExito.add(okProfile);
+    
       duracionRespuesta.add(resProfile.timings.duration);
     });
 
@@ -152,7 +151,7 @@ export default function (data) {
         const okDistance = check(resDistance, {
           "GET /map/get-distance-time 200": (r) => r.status === 200,
         });
-        tasaExito.add(okDistance);
+       
         duracionRespuesta.add(resDistance.timings.duration);
 
         const resSuggestions = http.get(
@@ -162,7 +161,7 @@ export default function (data) {
         const okSuggestions = check(resSuggestions, {
           "GET /map/get-suggestions 200": (r) => r.status === 200,
         });
-        tasaExito.add(okSuggestions);
+        
         duracionRespuesta.add(resSuggestions.timings.duration);
 
         const resAddress = http.get(
@@ -174,7 +173,7 @@ export default function (data) {
         const okAddress = check(resAddress, {
           "GET /map/get-address 200": (r) => r.status === 200,
         });
-        tasaExito.add(okAddress);
+    
         duracionRespuesta.add(resAddress.timings.duration);
       });
     }
@@ -190,7 +189,7 @@ export default function (data) {
         const okFare = check(fareRes, {
           "GET /ride/get-fare 200": (r) => r.status === 200,
         });
-        tasaExito.add(okFare);
+      
         duracionRespuesta.add(fareRes.timings.duration);
 
         const ridePayload = JSON.stringify({
@@ -205,7 +204,7 @@ export default function (data) {
         const okCreate = check(createRes, {
           "POST /ride/create 201": (r) => r.status === 201,
         });
-        tasaExito.add(okCreate);
+        
         duracionRespuesta.add(createRes.timings.duration);
       });
     }
@@ -224,7 +223,7 @@ export default function (data) {
       const okProfile = check(resProfile, {
         "GET /rider/profile 200": (r) => r.status === 200,
       });
-      tasaExito.add(okProfile);
+    
       duracionRespuesta.add(resProfile.timings.duration);
     });
   }
