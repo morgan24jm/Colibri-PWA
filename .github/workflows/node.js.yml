@@ -74,7 +74,7 @@ jobs:
     needs: test
 
     steps:
-      - name: Checkout c�digo
+      - name: Checkout código
         uses: actions/checkout@v4
 
       - name: Use Node.js 22.x
@@ -157,10 +157,12 @@ jobs:
           RIDER_PASSWORD: ${{ secrets.RIDER_PASSWORD }}
           RUN_MAPS: ${{ secrets.RUN_MAPS }}
           RUN_RIDE: ${{ secrets.RUN_RIDE }}
+          K6_CLOUD_TOKEN: ${{ secrets.K6_CLOUD_TOKEN }}
+          K6_CLOUD_PROJECT_ID: ${{ secrets.K6_CLOUD_PROJECT_ID }}
         run: |
           PORT_TO_USE="${PORT:-3000}"
           BASE_URL="http://localhost:${PORT_TO_USE}" \
-            k6 run --summary-export k6-summary.json Backend/test/load-test.js
+            k6 run --out cloud --summary-export k6-summary.json Backend/test/load-test.js
 
       - name: Subir resultados como artefacto
         if: always()
