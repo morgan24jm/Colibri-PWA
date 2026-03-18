@@ -8,7 +8,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_BACKEND: ghcr.io/morgan24jm/colibri-pwa-backend
+  IMAGE_FRONTEND: ghcr.io/morgan24jm/colibri-pwa-frontend
 
 jobs:
   test:
@@ -155,13 +156,13 @@ jobs:
         with:
           context: ./Backend
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:main
+          tags: ${{ env.IMAGE_BACKEND }}:main
       - name: Build and push Frontend image
         uses: docker/build-push-action@v5
         with:
           context: ./Frontend
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:main
+          tags: ${{ env.IMAGE_FRONTEND }}:main
           build-args: |
             VITE_SERVER_URL=${{ secrets.VITE_SERVER_URL }}
             VITE_ENVIRONMENT=${{ secrets.VITE_ENVIRONMENT }}
@@ -208,7 +209,6 @@ jobs:
             MAIL_PASS=${{ secrets.MAIL_PASS }}
             ENVEOF
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            export IMAGE_NAME="${{ github.repository }}"
             docker compose pull
             docker compose down
             docker compose up -d
