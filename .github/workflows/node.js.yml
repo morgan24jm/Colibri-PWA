@@ -194,9 +194,8 @@ jobs:
           scp docker-compose.yml \
             ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }}:~/docker-compose.yml
       - name: Deploy via Bastion
-        run: |
-          ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} << 'EOF'
-            cat > /home/g2019171031/.env << ENVEOF
+        env:
+          ENV_CONTENT: |
             PORT=${{ secrets.PORT }}
             RELOAD_INTERVAL=${{ secrets.RELOAD_INTERVAL }}
             SERVER_URL=${{ secrets.SERVER_URL }}
@@ -208,8 +207,12 @@ jobs:
             GOOGLE_MAPS_API=${{ secrets.GOOGLE_MAPS_API }}
             MAIL_USER=${{ secrets.MAIL_USER }}
             MAIL_PASS=${{ secrets.MAIL_PASS }}
-            ENVEOF
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        run: |
+          echo "$ENV_CONTENT" | ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} 'cat > ~/.env'
+          ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} << 'EOF'
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             docker compose pull
             docker compose down
             docker compose up -d
