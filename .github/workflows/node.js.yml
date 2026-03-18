@@ -6,36 +6,27 @@ on:
   pull_request:
     branches: ["main"]
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         node-version: [18.x, 22.x]
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-
-      # =========================
-      # BACKEND
-      # =========================
       - name: Install backend dependencies
         working-directory: Backend
         run: npm install
-
-      # =========================
-      # FRONTEND
-      # =========================
       - name: Install frontend dependencies
         working-directory: Frontend
         run: npm install
-
       - name: Build frontend
         working-directory: Frontend
         env:
@@ -44,18 +35,12 @@ jobs:
           VITE_RIDE_TIMEOUT: ${{ secrets.VITE_RIDE_TIMEOUT }}
         run: npm run build
 
-  # =========================
-  # SONARQUBE ANALYSIS
-  # =========================
   sonarqube:
     name: SonarQube Scan
     runs-on: ubuntu-latest
     needs: test
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v2
         env:
@@ -66,31 +51,21 @@ jobs:
             -Dsonar.projectKey=mi-proyecto-gestion-sw
             -Dsonar.sources=Backend,Frontend
 
-  # =========================
-  # K6 LOAD TESTS (LOCALHOST)
-  # =========================
   k6-load-test:
     runs-on: ubuntu-latest
     needs: test
-
     steps:
-      - name: Checkout código
-        uses: actions/checkout@v4
-
-      - name: Use Node.js 22.x
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22.x
-
       - name: Install backend dependencies
         working-directory: Backend
         run: npm install
-
       - name: Install frontend dependencies
         working-directory: Frontend
         run: npm install
-
-      - name: Start backend (localhost)
+      - name: Start backend
         working-directory: Backend
         env:
           PORT: ${{ secrets.PORT }}
@@ -104,18 +79,14 @@ jobs:
           GOOGLE_MAPS_API: ${{ secrets.GOOGLE_MAPS_API }}
           MAIL_USER: ${{ secrets.MAIL_USER }}
           MAIL_PASS: ${{ secrets.MAIL_PASS }}
-        run: |
-          node server.js > server.log 2>&1 &
-
-      - name: Start frontend (localhost)
+        run: node server.js > server.log 2>&1 &
+      - name: Start frontend
         working-directory: Frontend
         env:
           VITE_SERVER_URL: ${{ secrets.VITE_SERVER_URL }}
           VITE_ENVIRONMENT: ${{ secrets.VITE_ENVIRONMENT }}
           VITE_RIDE_TIMEOUT: ${{ secrets.VITE_RIDE_TIMEOUT }}
-        run: |
-          npm run dev -- --host 0.0.0.0 --port 5173 > frontend.log 2>&1 &
-
+        run: npm run dev -- --host 0.0.0.0 --port 5173 > frontend.log 2>&1 &
       - name: Wait for backend
         env:
           PORT: ${{ secrets.PORT }}
@@ -123,32 +94,27 @@ jobs:
           for i in {1..30}; do
             PORT_TO_USE="${PORT:-3000}"
             if curl -sSf "http://localhost:${PORT_TO_USE}/" >/dev/null; then
-              echo "Backend ready";
-              exit 0;
+              echo "Backend ready"; exit 0;
             fi
             sleep 2;
           done
-          echo "Backend did not start in time";
-          cat Backend/server.log || true;
+          echo "Backend did not start in time"
+          cat Backend/server.log || true
           exit 1
-
       - name: Wait for frontend
         run: |
           for i in {1..30}; do
             if curl -sSf "http://localhost:5173/" >/dev/null; then
-              echo "Frontend ready";
-              exit 0;
+              echo "Frontend ready"; exit 0;
             fi
             sleep 2;
           done
-          echo "Frontend did not start in time";
-          cat Frontend/frontend.log || true;
+          echo "Frontend did not start in time"
+          cat Frontend/frontend.log || true
           exit 1
-
       - name: Instalar K6
         uses: grafana/setup-k6-action@v1
-
-      - name: Ejecutar pruebas de carga K6 (localhost)
+      - name: Ejecutar pruebas K6
         env:
           PORT: ${{ secrets.PORT }}
           USER_EMAIL: ${{ secrets.USER_EMAIL }}
@@ -163,10 +129,87 @@ jobs:
           PORT_TO_USE="${PORT:-3000}"
           BASE_URL="http://localhost:${PORT_TO_USE}" \
             k6 run --out cloud --summary-export k6-summary.json Backend/test/load-test.js
-
-      - name: Subir resultados como artefacto
+      - name: Subir resultados
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: k6-results
           path: k6-summary.json
+
+  build-and-push:
+    runs-on: ubuntu-latest
+    needs: [sonarqube, k6-load-test]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Backend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-backend:main
+      - name: Build and push Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Frontend
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-frontend:main
+          build-args: |
+            VITE_SERVER_URL=${{ secrets.VITE_SERVER_URL }}
+            VITE_ENVIRONMENT=${{ secrets.VITE_ENVIRONMENT }}
+            VITE_RIDE_TIMEOUT=${{ secrets.VITE_RIDE_TIMEOUT }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Add known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.BASTION_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan \
+            -J ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }} \
+            -H ${{ secrets.DOCKER_HOST }} >> ~/.ssh/known_hosts
+      - name: Copy docker-compose to server
+        run: |
+          scp -J ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }} \
+            docker-compose.yml \
+            ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }}:~/docker-compose.yml
+      - name: Deploy via Bastion
+        run: |
+          ssh -J ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }} \
+              ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} << 'EOF'
+            cat > /home/g2019171031/.env << ENVEOF
+            PORT=${{ secrets.PORT }}
+            RELOAD_INTERVAL=${{ secrets.RELOAD_INTERVAL }}
+            SERVER_URL=${{ secrets.SERVER_URL }}
+            CLIENT_URL=${{ secrets.CLIENT_URL }}
+            ENVIRONMENT=${{ secrets.ENVIRONMENT }}
+            MONGODB_DEV_URL=${{ secrets.MONGODB_DEV_URL }}
+            MONGODB_PROD_URL=${{ secrets.MONGODB_PROD_URL }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            GOOGLE_MAPS_API=${{ secrets.GOOGLE_MAPS_API }}
+            MAIL_USER=${{ secrets.MAIL_USER }}
+            MAIL_PASS=${{ secrets.MAIL_PASS }}
+            ENVEOF
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            export IMAGE_NAME="${{ github.repository }}"
+            docker compose pull
+            docker compose down
+            docker compose up -d
+          EOF
