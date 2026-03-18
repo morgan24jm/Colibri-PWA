@@ -1,6 +1,6 @@
 services:
   backend:
-    image: ghcr.io/${IMAGE_NAME}-backend:main
+    image: ghcr.io/morgan24jm/colibri-pwa-backend:main
     container_name: my-node-backend
     restart: always
     ports:
@@ -9,7 +9,7 @@ services:
       - /home/g2019171031/.env
 
   frontend:
-    image: ghcr.io/${IMAGE_NAME}-frontend:main
+    image: ghcr.io/morgan24jm/colibri-pwa-frontend:main
     container_name: my-node-frontend
     restart: always
     ports:
