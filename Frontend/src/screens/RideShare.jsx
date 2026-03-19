@@ -167,7 +167,7 @@ function RideShare() {
           <ArrowLeft size={24} />
         </button>
         <h1 className="text-lg font-bold flex-1 text-center">
-          Viaje en vuelo
+          Viaje en Curso
         </h1>
         <div className="w-10"></div>
       </div>

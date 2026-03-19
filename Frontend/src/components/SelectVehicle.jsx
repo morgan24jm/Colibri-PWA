@@ -11,10 +11,10 @@ const vehicles = [
   },
   {
     id: 2,
-    name: "Combi",
-    description: "Viajes en trasporte colectivo asequibles",
+    name: "Camioneta",
+    description: "Viaje en camioneta con capacidad de carga",
     type: "bike",
-    image: "combi.png",
+    image: "np300.png",
     price: 254.7,
   }
 ];
