@@ -1,24 +1,43 @@
 {
+  "id": "/",
   "name": "Colibri",
   "short_name": "Colibri",
+  "description": "Plataforma de gestión y operación Colibri",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#0ea5a4",
   "prefer_related_applications": false,
-  "shortcuts": [],
   "categories": ["productivity"],
+
   "icons": [
     {
-      "src": "/icons/icon-192.svg",
+      "src": "/icons/Logo-192.png",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.svg",
+      "src": "/icons/Logo-512.png",
       "sizes": "512x512",
-      "type": "image/svg+xml"
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+
+  "screenshots": [
+    {
+      "src": "/screens/sidebar.png",
+      "sizes": "1983x1482",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/screens/captain-module.png",
+      "sizes": "1983x2729",
+      "type": "image/png"
     }
   ]
 }

@@ -499,7 +499,7 @@ function RiderHomeScreen() {
   src={
     {
       car: "/car.png",
-      bike: "/combi.png",
+      bike: "/np300.png",
       
     }[rider?.vehicle?.type] || "/default.png" 
   }

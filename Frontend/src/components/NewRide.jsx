@@ -32,7 +32,7 @@ function NewRide({
       if (navigator.share) {
         // Usar Web Share API si está disponible (iOS/Android modernos)
         await navigator.share({
-          title: 'Mi viaje en vivo',
+          title: 'Mi viaje en tiempo real',
           text: shareText,
           url: shareLink,
         });

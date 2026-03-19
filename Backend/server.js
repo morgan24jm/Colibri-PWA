@@ -1,5 +1,6 @@
 require("dotenv").config();
 const socket = require("./socket");
+const path = require("path");
 const express = require("express");
 const { createServer } = require("http");
 const app = express();
@@ -39,10 +40,6 @@ if (process.env.ENVIRONMENT == "production") {
   keepServerRunning();
 }
 
-app.get("/", (req, res) => {
-  res.json("Hello, World!");
-});
-
 app.get("/reload", (req, res) => {
   res.json("Server Reloaded");
 });
@@ -52,6 +49,14 @@ app.use("/rider", riderRoutes);
 app.use("/map", mapsRoutes);
 app.use("/ride", rideRoutes);
 app.use("/mail", mailRoutes);
+
+// Servir archivos estáticos de React
+app.use(express.static(path.join(__dirname, "dist")));
+
+// Para cualquier ruta que no sea API, enviar index.html
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
+});
 
 server.listen(PORT, () => {
   console.log("Server is listening on port", PORT);

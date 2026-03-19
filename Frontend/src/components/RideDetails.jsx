@@ -31,7 +31,7 @@ function RideDetails({
       if (navigator.share) {
         // Usar Web Share API si está disponible (iOS/Android modernos)
         await navigator.share({
-          title: 'Mi viaje en vivo',
+          title: 'Mi viaje en en tiempo real',
           text: shareText,
           url: shareLink,
         });
@@ -76,7 +76,7 @@ function RideDetails({
                 src={
                   {
                     car: "/car.png",
-                    bike: "/combi.png",
+                    bike: "/np300.png",
                     auto: "/auto.webp", // agregar más según sea necesario
                   }[selectedVehicle] || "/default.png"
                 }
