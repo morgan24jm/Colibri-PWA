@@ -1,17 +1,13 @@
 require("dotenv").config();
 const socket = require("./socket");
-const path = require("path");
 const express = require("express");
 const { createServer } = require("http");
 const app = express();
 const server = createServer(app);
-
 socket.initializeSocket(server);
-
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
-
 const userRoutes = require("./routes/user.routes");
 const riderRoutes = require("./routes/rider.routes");
 const mapsRoutes = require("./routes/maps.routes");
@@ -20,6 +16,7 @@ const mailRoutes = require("./routes/mail.routes");
 const keepServerRunning = require("./services/active.service");
 const dbStream = require("./services/logging.service");
 require("./config/db");
+
 const PORT = process.env.PORT || 4000;
 
 if (process.env.ENVIRONMENT == "production") {
@@ -31,6 +28,7 @@ if (process.env.ENVIRONMENT == "production") {
 } else {
   app.use(morgan("dev"));
 }
+
 app.use(cors());
 app.use(cookieParser());
 app.use(express.json());
@@ -39,6 +37,11 @@ app.use(express.urlencoded({ extended: true }));
 if (process.env.ENVIRONMENT == "production") {
   keepServerRunning();
 }
+
+// Health check para K6 y pipeline
+app.get("/", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
 
 app.get("/reload", (req, res) => {
   res.json("Server Reloaded");
@@ -50,13 +53,7 @@ app.use("/map", mapsRoutes);
 app.use("/ride", rideRoutes);
 app.use("/mail", mailRoutes);
 
-// Servir archivos estáticos de React
-app.use(express.static(path.join(__dirname, "dist")));
-
-// Para cualquier ruta que no sea API, enviar index.html
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "dist", "index.html"));
-});
+// ELIMINADO: express.static y app.get("*") que servían el dist
 
 server.listen(PORT, () => {
   console.log("Server is listening on port", PORT);
