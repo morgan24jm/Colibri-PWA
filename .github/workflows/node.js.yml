@@ -189,10 +189,12 @@ jobs:
             ProxyJump ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}
           EOF
           chmod 600 ~/.ssh/config
-      - name: Copy docker-compose to server
+      - name: Copy files to server
         run: |
           scp docker-compose.yml \
             ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }}:~/docker-compose.yml
+          scp prometheus.yml \
+            ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }}:~/prometheus.yml
       - name: Deploy via Bastion
         env:
           ENV_CONTENT: |
