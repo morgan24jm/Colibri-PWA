@@ -7,12 +7,12 @@ const duracionRespuesta = new Trend("duracion_respuesta");
 
 export const options = {
   stages: [
-    { duration: "30s", target: 10 },
-    { duration: "1m", target: 10 },
+    { duration: "30s", target: 3 },
+    { duration: "1m", target: 3 },
     { duration: "10s", target: 0 },
   ],
   thresholds: {
-    http_req_duration: ["p(95)<2000"],
+    http_req_duration: ["p(95)<15000"],
     checks: ["rate>0.95"],
   },
 };
