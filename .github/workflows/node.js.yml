@@ -235,3 +235,27 @@ jobs:
             docker compose up -d
             docker image prune -f
           EOF
+
+  blue-green-deploy:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Add known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.BASTION_HOST }} >> ~/.ssh/known_hosts
+          cat >> ~/.ssh/config << EOF
+          Host ${{ secrets.NGINX_HOST }}
+            StrictHostKeyChecking no
+            ProxyJump ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}
+          EOF
+          chmod 600 ~/.ssh/config
+      - name: Run Blue-Green Deploy on Nginx VPS
+        run: |
+          ssh ${{ secrets.NGINX_USER }}@${{ secrets.NGINX_HOST }} \
+            'sudo /usr/local/bin/pipeline_deploy.sh'
