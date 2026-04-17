@@ -286,63 +286,46 @@ jobs:
             ProxyJump ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}
           EOF
           chmod 600 ~/.ssh/config
-
-      - name: Esperar 3 minutos para que el canary reciba tráfico
-        run: sleep 180
-
-      - name: Consultar Prometheus y decidir
+      - name: Progressive Canary Analysis
         run: |
-          TOTAL=$(ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} \
-            "curl -s 'http://localhost:9090/prometheus/api/v1/query?query=sum(rate(http_requests_total{exported_instance=\"canary\"}[2m]))'" \
-            | python3 -c "
-          import sys, json
-          try:
-              d = json.load(sys.stdin)
-              r = d.get('data', {}).get('result', [])
-              print(r[0]['value'][1] if r else '0')
-          except:
-              print('0')
-          ")
+          for WEIGHT in 10 30 50 100; do
+            echo "Ajustando canary a ${WEIGHT}%"
 
-          ERRORS=$(ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} \
-            "curl -s 'http://localhost:9090/prometheus/api/v1/query?query=sum(rate(http_requests_total{exported_instance=\"canary\",status!~\"2..\"}[2m]))'" \
-            | python3 -c "
-          import sys, json
-          try:
-              d = json.load(sys.stdin)
-              r = d.get('data', {}).get('result', [])
-              print(r[0]['value'][1] if r else '0')
-          except:
-              print('0')
-          ")
+            ssh ${{ secrets.NGINX_USER }}@${{ secrets.NGINX_HOST }} \
+              "sudo /usr/local/bin/set-canary-weight.sh ${WEIGHT}"
 
-          echo "Total requests canary: $TOTAL"
-          echo "Error requests canary: $ERRORS"
+            sleep 60
 
-          ERROR_RATE=$(python3 -c "
-          total=float('$TOTAL')
-          errors=float('$ERRORS')
-          print('0' if total == 0 else f'{(errors/total)*100:.2f}')
-          ")
+            TOTAL_QUERY='sum(rate(http_requests_total{exported_instance="canary"}[2m]))'
+            ERROR_QUERY='sum(rate(http_requests_total{exported_instance="canary",status!~"2.."}[2m]))'
 
-          echo "Error rate canary: $ERROR_RATE%"
+            TOTAL=$(ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} \
+              "curl -s --get --data-urlencode query=\"$TOTAL_QUERY\" http://localhost:9090/prometheus/api/v1/query" \
+              | python3 -c 'import sys,json; d=json.load(sys.stdin); r=d["data"]["result"]; print(r[0]["value"][1] if r else "0")')
 
-          SHOULD_PROMOTE=$(python3 -c "
-          print('yes' if float('$ERROR_RATE') < 5 else 'no')
-          ")
+            ERRORS=$(ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} \
+              "curl -s --get --data-urlencode query=\"$ERROR_QUERY\" http://localhost:9090/prometheus/api/v1/query" \
+              | python3 -c 'import sys,json; d=json.load(sys.stdin); r=d["data"]["result"]; print(r[0]["value"][1] if r else "0")')
 
-          echo "SHOULD_PROMOTE=$SHOULD_PROMOTE" >> $GITHUB_ENV
+            ERROR_RATE=$(python3 -c "t=float('$TOTAL'); e=float('$ERRORS'); print(0 if t==0 else round((e/t)*100,2))")
 
-      - name: Promover canary a stable
-        if: env.SHOULD_PROMOTE == 'yes'
+            echo "Canary=${WEIGHT}% total=$TOTAL errors=$ERRORS rate=$ERROR_RATE%"
+
+            FAIL=$(python3 -c "print('yes' if float('$ERROR_RATE') >= 5 else 'no')")
+
+            if [ "$FAIL" = "yes" ]; then
+              echo "Rollback"
+              ssh ${{ secrets.NGINX_USER }}@${{ secrets.NGINX_HOST }} \
+                "sudo /usr/local/bin/set-canary-weight.sh 0"
+              exit 1
+            fi
+          done
+
+      - name: Promote Canary
         run: |
-          echo "✅ Error rate OK — Promoviendo canary a stable"
           ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} \
-            'sudo bash /usr/local/bin/promote-canary.sh'
-
-      - name: Rollback — canary con errores
-        if: env.SHOULD_PROMOTE == 'no'
-        run: |
-          echo "❌ Error rate alto — Haciendo rollback"
+            "sudo bash /usr/local/bin/promote-canary.sh"
+            
           ssh ${{ secrets.NGINX_USER }}@${{ secrets.NGINX_HOST }} \
-            'sudo bash /usr/local/bin/rollback-canary.sh'
+            "sudo /usr/local/bin/set-canary-weight.sh 0"
+     
