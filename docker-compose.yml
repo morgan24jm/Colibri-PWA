@@ -7,6 +7,8 @@ services:
       - "3000:3000"
     env_file:
       - /home/g2019171031/.env
+    environment:
+      - INSTANCE=stable
 
   backend-canary:
     image: ghcr.io/morgan24jm/colibri-pwa-backend:main
@@ -16,6 +18,8 @@ services:
       - "3002:3000"
     env_file:
       - /home/g2019171031/.env
+    environment:
+      - INSTANCE=canary
 
   frontend:
     image: ghcr.io/morgan24jm/colibri-pwa-frontend:main
@@ -42,7 +46,7 @@ services:
       - '--web.route-prefix=/prometheus/'
 
   grafana:
-    image: grafana/grafana:latest
+    image: ghcr.io/grafana/grafana:latest
     container_name: grafana
     restart: always
     ports:
