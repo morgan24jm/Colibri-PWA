@@ -13,3 +13,10 @@ scrape_configs:
   - job_name: 'cadvisor'
     static_configs:
       - targets: ['cadvisor:8080']
+
+  - job_name: 'backend'
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - backend-stable:3000
+          - backend-canary:3000
