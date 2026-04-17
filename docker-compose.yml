@@ -1,10 +1,19 @@
 services:
-  backend:
-    image: ghcr.io/morgan24jm/colibri-pwa-backend:main
-    container_name: my-node-backend
+  backend-stable:
+    image: ghcr.io/morgan24jm/colibri-pwa-backend:stable
+    container_name: my-node-backend-stable
     restart: always
     ports:
       - "3000:3000"
+    env_file:
+      - /home/g2019171031/.env
+
+  backend-canary:
+    image: ghcr.io/morgan24jm/colibri-pwa-backend:main
+    container_name: my-node-backend-canary
+    restart: always
+    ports:
+      - "3002:3000"
     env_file:
       - /home/g2019171031/.env
 
@@ -15,7 +24,7 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
+      - backend-stable
 
   prometheus:
     image: prom/prometheus:latest
