@@ -173,7 +173,7 @@ jobs:
           push: true
           tags: |
            ${{ env.IMAGE_BACKEND }}:main
-           ${{ env.IMAGE_BACKEND }}:stable
+           ${{ env.IMAGE_BACKEND }}:canary
       - name: Build and push Frontend image
         uses: docker/build-push-action@v5
         with:
@@ -232,9 +232,8 @@ jobs:
           echo "$ENV_CONTENT" | ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} 'cat > ~/.env'
           ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} << 'EOF'
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-            docker compose pull
-            docker compose down
-            docker compose up -d
+            docker compose pull backend-canary
+            docker compose up -d --no-deps backend-canary
             docker image prune -f
           EOF
 
