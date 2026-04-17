@@ -293,7 +293,7 @@ jobs:
         run: |
           PROM="http://${{ secrets.DOCKER_HOST }}:9090/prometheus"
 
-          TOTAL=$(curl -s "$PROM/prometheus/api/v1/query?query=sum(rate(http_requests_total{exported_instance=\"canary\"}[2m]))" \
+          TOTAL=$(curl -s "$PROM/api/v1/query?query=sum(rate(http_requests_total{exported_instance=\"canary\"}[2m]))" \
             | python3 -c "
           import sys, json
           d = json.load(sys.stdin)
@@ -301,7 +301,7 @@ jobs:
           print(r[0]['value'][1] if r else '0')
           ")
 
-          ERRORS=$(curl -s "$PROM/prometheus/api/v1/query?query=sum(rate(http_requests_total{exported_instance=\"canary\",status!~\"2..\"}[2m]))" \
+          ERRORS=$(curl -s "$PROM/api/v1/query?query=sum(rate(http_requests_total{exported_instance=\"canary\",status!~\"2..\"}[2m]))" \
             | python3 -c "
           import sys, json
           d = json.load(sys.stdin)
