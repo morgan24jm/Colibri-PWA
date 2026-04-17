@@ -280,6 +280,7 @@ jobs:
           Host ${{ secrets.DOCKER_HOST }}
             StrictHostKeyChecking no
             ProxyJump ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}
+
           Host ${{ secrets.NGINX_HOST }}
             StrictHostKeyChecking no
             ProxyJump ${{ secrets.BASTION_USER }}@${{ secrets.BASTION_HOST }}
@@ -291,39 +292,45 @@ jobs:
 
       - name: Consultar Prometheus y decidir
         run: |
-          PROM="http://${{ secrets.DOCKER_HOST }}:9090/prometheus"
-
-          TOTAL=$(curl -s "$PROM/api/v1/query?query=sum(rate(http_requests_total{exported_instance=\"canary\"}[2m]))" \
+          TOTAL=$(ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} \
+            "curl -s 'http://localhost:9090/prometheus/api/v1/query?query=sum(rate(http_requests_total{exported_instance=\"canary\"}[2m]))'" \
             | python3 -c "
           import sys, json
-          d = json.load(sys.stdin)
-          r = d['data']['result']
-          print(r[0]['value'][1] if r else '0')
+          try:
+              d = json.load(sys.stdin)
+              r = d.get('data', {}).get('result', [])
+              print(r[0]['value'][1] if r else '0')
+          except:
+              print('0')
           ")
 
-          ERRORS=$(curl -s "$PROM/api/v1/query?query=sum(rate(http_requests_total{exported_instance=\"canary\",status!~\"2..\"}[2m]))" \
+          ERRORS=$(ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} \
+            "curl -s 'http://localhost:9090/prometheus/api/v1/query?query=sum(rate(http_requests_total{exported_instance=\"canary\",status!~\"2..\"}[2m]))'" \
             | python3 -c "
           import sys, json
-          d = json.load(sys.stdin)
-          r = d['data']['result']
-          print(r[0]['value'][1] if r else '0')
+          try:
+              d = json.load(sys.stdin)
+              r = d.get('data', {}).get('result', [])
+              print(r[0]['value'][1] if r else '0')
+          except:
+              print('0')
           ")
 
           echo "Total requests canary: $TOTAL"
           echo "Error requests canary: $ERRORS"
 
           ERROR_RATE=$(python3 -c "
-          total = float('$TOTAL')
-          errors = float('$ERRORS')
-          if total == 0:
-              print('0')
-          else:
-              print(f'{(errors/total)*100:.2f}')
+          total=float('$TOTAL')
+          errors=float('$ERRORS')
+          print('0' if total == 0 else f'{(errors/total)*100:.2f}')
           ")
 
           echo "Error rate canary: $ERROR_RATE%"
 
-          SHOULD_PROMOTE=$(python3 -c "print('yes' if float('$ERROR_RATE') < 5.0 else 'no')")
+          SHOULD_PROMOTE=$(python3 -c "
+          print('yes' if float('$ERROR_RATE') < 5 else 'no')
+          ")
+
           echo "SHOULD_PROMOTE=$SHOULD_PROMOTE" >> $GITHUB_ENV
 
       - name: Promover canary a stable
