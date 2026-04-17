@@ -46,7 +46,7 @@ services:
       - '--web.route-prefix=/prometheus/'
 
   grafana:
-    image: ghcr.io/grafana/grafana:latest
+    image: grafana/grafana:latest
     container_name: grafana
     restart: always
     ports:
