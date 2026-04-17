@@ -10,6 +10,7 @@ socket.initializeSocket(server);
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
+const client = require("prom-client");
 
 const userRoutes = require("./routes/user.routes");
 const riderRoutes = require("./routes/rider.routes");
@@ -24,9 +25,35 @@ require("./config/db");
 
 const PORT = process.env.PORT || 4000;
 
-/* HEADER PARA IDENTIFICAR INSTANCIA */
+/* ============================
+   PROMETHEUS METRICS
+============================ */
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
+const httpRequests = new client.Counter({
+  name: "http_requests_total",
+  help: "Total de peticiones HTTP",
+  labelNames: ["method", "route", "status", "instance"]
+});
+
+register.registerMetric(httpRequests);
+
+/* ============================
+   HEADER PARA IDENTIFICAR INSTANCIA
+============================ */
 app.use((req, res, next) => {
   res.setHeader("X-Instance", process.env.INSTANCE || "unknown");
+
+  res.on("finish", () => {
+    httpRequests.inc({
+      method: req.method,
+      route: req.path,
+      status: res.statusCode,
+      instance: process.env.INSTANCE || "unknown"
+    });
+  });
+
   next();
 });
 
@@ -48,6 +75,14 @@ app.use(express.urlencoded({ extended: true }));
 if (process.env.ENVIRONMENT == "production") {
   keepServerRunning();
 }
+
+/* ============================
+   ENDPOINT METRICS
+============================ */
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
 
 // Health check
 app.get("/", (req, res) => {
