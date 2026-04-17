@@ -93,6 +93,14 @@ app.get("/reload", (req, res) => {
   res.json("Server Reloaded");
 });
 
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+    instance: process.env.INSTANCE || "unknown",
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.use("/user", userRoutes);
 app.use("/rider", riderRoutes);
 app.use("/map", mapsRoutes);
