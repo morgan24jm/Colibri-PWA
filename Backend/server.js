@@ -4,20 +4,31 @@ const express = require("express");
 const { createServer } = require("http");
 const app = express();
 const server = createServer(app);
+
 socket.initializeSocket(server);
+
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
+
 const userRoutes = require("./routes/user.routes");
 const riderRoutes = require("./routes/rider.routes");
 const mapsRoutes = require("./routes/maps.routes");
 const rideRoutes = require("./routes/ride.routes");
 const mailRoutes = require("./routes/mail.routes");
+
 const keepServerRunning = require("./services/active.service");
 const dbStream = require("./services/logging.service");
+
 require("./config/db");
 
 const PORT = process.env.PORT || 4000;
+
+/* HEADER PARA IDENTIFICAR INSTANCIA */
+app.use((req, res, next) => {
+  res.setHeader("X-Instance", process.env.INSTANCE || "unknown");
+  next();
+});
 
 if (process.env.ENVIRONMENT == "production") {
   app.use(
@@ -38,7 +49,7 @@ if (process.env.ENVIRONMENT == "production") {
   keepServerRunning();
 }
 
-// Health check para K6 y pipeline
+// Health check
 app.get("/", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
@@ -52,8 +63,6 @@ app.use("/rider", riderRoutes);
 app.use("/map", mapsRoutes);
 app.use("/ride", rideRoutes);
 app.use("/mail", mailRoutes);
-
-// ELIMINADO: express.static y app.get("*") que servían el dist
 
 server.listen(PORT, () => {
   console.log("Server is listening on port", PORT);
