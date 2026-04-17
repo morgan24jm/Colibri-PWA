@@ -11,7 +11,7 @@ services:
       - INSTANCE=stable
 
   backend-canary:
-    image: ghcr.io/morgan24jm/colibri-pwa-backend:main
+    image: ghcr.io/morgan24jm/colibri-pwa-backend:canary
     container_name: my-node-backend-canary
     restart: always
     ports:
