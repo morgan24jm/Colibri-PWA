@@ -302,11 +302,11 @@ jobs:
 
             TOTAL=$(ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} \
               "curl -s --get --data-urlencode 'query=$TOTAL_QUERY' http://localhost:9090/prometheus/api/v1/query" \
-              | python3 -c 'import sys,json d=json.load(sys.stdin) r=d.get("data",{}).get("result",[]) print(r[0]["value"][1] if r else "0")')
+              | python3 -c 'import sys,json; d=json.load(sys.stdin); r=d.get("data",{}).get("result",[]); print(r[0]["value"][1] if r else "0")')
 
             ERRORS=$(ssh ${{ secrets.DOCKER_USER }}@${{ secrets.DOCKER_HOST }} \
               "curl -s --get --data-urlencode 'query=$ERROR_QUERY' http://localhost:9090/prometheus/api/v1/query" \
-              | python3 -c 'import sys,json d=json.load(sys.stdin) r=d.get("data",{}).get("result",[]) print(r[0]["value"][1] if r else "0")')
+              | python3 -c 'import sys,json; d=json.load(sys.stdin); r=d.get("data",{}).get("result",[]); print(r[0]["value"][1] if r else "0")')
             
             ERROR_RATE=$(python3 -c "t=float('$TOTAL'); e=float('$ERRORS'); print(0 if t==0 else round((e/t)*100,2))")
 
